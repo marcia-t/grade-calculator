@@ -9,6 +9,8 @@ Globals:
     Timeout: 3
 
 Resources:
+  GradeCalculatorDLQ:
+    Type: AWS::SNS::Topic
   GradeCalculatorTopic:
     Type: AWS::SNS::Topic
   GradeCalculatorBucket:
@@ -21,6 +23,9 @@ Resources:
       CodeUri: grade_calculator/
       Handler: gradecalculator.lambda_handler
       Runtime: python3.9
+      DeadLetterQueue:
+        Type: SNS
+        TargetArn: !Ref GradeCalculatorDLQ
       Policies:
         - S3ReadPolicy:
             BucketName: !Sub ${AWS::StackName}-${AWS::AccountId}-${AWS::Region}
@@ -50,3 +55,16 @@ Resources:
           Type: SNS
           Properties:
             Topic: !Ref GradeCalculatorTopic
+  ErrorHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: grade_calculator/
+      Handler: errorhandler.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Events:
+        SNSEvent:
+          Type: SNS
+          Properties:
+            Topic: !Ref GradeCalculatorDLQ
